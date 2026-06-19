@@ -1,0 +1,93 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build Outputs
+dist/
+build/
+out/
+coverage/
+.next/
+.vercel/
+
+# TypeScript
+*.tsbuildinfo
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Firebase
+.firebase/
+firebase-debug.log
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub/
+.pub-cache/
+build/
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/App.framework
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+
+android/.gradle/
+android/app/debug/
+android/app/profile/
+android/app/release/
+
+# Generated Flutter files
+lib/generated_plugin_registrant.dart
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+
+# VS Code
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# Temporary Files
+tmp/
+temp/
+.cache/
+.eslintcache
+
+# Testing
+coverage/
+
+# Secrets / Keys
+serviceAccountKey.json
+google-services.json
+GoogleService-Info.plist
+
+# Misc
+*.swp
+*.swo
+*.bak
+*.orig
