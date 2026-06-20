@@ -1,23 +1,27 @@
-const { initializeApp, cert } = require("firebase-admin/app");
+const { initializeApp, getApps, cert } = require("firebase-admin/app");
 const { getFirestore } = require("firebase-admin/firestore");
-
-const admin = require("firebase-admin");
 
 function getCredential() {
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     const parsed = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+
     if (parsed.private_key) {
       parsed.private_key = parsed.private_key.replace(/\\n/g, "\n");
     }
-    return admin.credential.cert(parsed);
+
+    return cert(parsed);
   }
+
   const serviceAccount = require("./serviceAccountKey.json");
-  return admin.credential.cert(serviceAccount);
+  return cert(serviceAccount);
 }
 
-if (!admin.apps.length) {
-  admin.initializeApp({ credential: getCredential() });
+if (getApps().length === 0) {
+  initializeApp({
+    credential: getCredential(),
+  });
 }
 
-const db = admin.firestore();
-module.exports = { admin, db };
+const db = getFirestore();
+
+module.exports = { db };
