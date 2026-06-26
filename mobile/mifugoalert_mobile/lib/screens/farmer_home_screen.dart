@@ -58,13 +58,18 @@ class FarmerHomeScreen extends StatelessWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _topBar(context, unread),
+                  farmerTopBar(
+                    farmerName,
+                    farmerId: farmerId,
+                    onBell: () => onOpenTab?.call(5),
+                    onMenu: () => onOpenMenu?.call(),
+                  ),
                   Expanded(
                     child: SafeArea(
                       top: false,
                       child: SingleChildScrollView(
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -88,14 +93,20 @@ class FarmerHomeScreen extends StatelessWidget {
                                 () => onOpenTab?.call(6),
                               ),
                               const SizedBox(height: 8),
-                              ...caseDocs.map(_caseCard),
+                              if (caseDocs.isEmpty)
+                                _emptyHint('No cases yet.')
+                              else
+                                ...caseDocs.map(_caseCard),
                               const SizedBox(height: 20),
                               _sectionHeader(
                                 'Latest notifications',
                                 () => onOpenTab?.call(5),
                               ),
                               const SizedBox(height: 8),
-                              ...notifDocs.map(_notifTile),
+                              if (notifDocs.isEmpty)
+                                _emptyHint('No notifications yet.')
+                              else
+                                ...notifDocs.map(_notifTile),
                             ],
                           ),
                         ),
@@ -134,102 +145,15 @@ class FarmerHomeScreen extends StatelessWidget {
     return 'just now';
   }
 
-  Widget _topBar(BuildContext context, int unread) {
-    final statusBarHeight = MediaQuery.of(context).padding.top;
-    return Container(
-      padding: EdgeInsets.fromLTRB(16, statusBarHeight + 10, 16, 14),
-      decoration: const BoxDecoration(gradient: AppColors.heroGradient),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Image.asset(
-              'assets/images/logo2.png',
-              width: 38,
-              height: 38,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'MifugoAlert',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              Text(
-                'FARMER · ${farmerName.toUpperCase()}',
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.gold,
-                  letterSpacing: 0.5,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const Spacer(),
-          GestureDetector(
-            onTap: () => onOpenTab?.call(5),
-            child: _bell(unread),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: () => onOpenMenu?.call(),
-            child: const Icon(Icons.menu, color: Colors.white),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _bell(int count) => Stack(
-    clipBehavior: Clip.none,
-    children: [
-      Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white24),
-        ),
-        child: const Icon(
-          Icons.notifications_none,
-          color: Colors.white,
-          size: 22,
-        ),
-      ),
-      if (count > 0)
-        Positioned(
-          right: -2,
-          top: -2,
-          child: Container(
-            padding: const EdgeInsets.all(4),
-            constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-            decoration: const BoxDecoration(
-              color: AppColors.maroon,
-              shape: BoxShape.circle,
-            ),
-            child: Text(
-              '$count',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-    ],
+  Widget _emptyHint(String text) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: AppColors.border),
+    ),
+    child: Text(text, style: const TextStyle(color: AppColors.textSecondary)),
   );
 
   Widget _heroCard(BuildContext context) => Container(
