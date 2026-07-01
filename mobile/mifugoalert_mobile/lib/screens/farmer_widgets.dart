@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../theme/app_colors.dart';
 
@@ -11,21 +12,29 @@ Widget farmerTopBar(
   return Builder(
     builder: (context) {
       final topInset = MediaQuery.of(context).padding.top;
-      return Container(
-        padding: EdgeInsets.fromLTRB(16, topInset + 10, 16, 14),
-        decoration: const BoxDecoration(gradient: AppColors.heroGradient),
-        child: Row(
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.dark.copyWith(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+        ),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(16, topInset + 10, 16, 14),
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+          ),
+          child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.primaryTint,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Image.asset(
                 'assets/images/logo2.png',
-                width: 38,
-                height: 38,
+                width: 40,
+                height: 40,
               ),
             ),
             const SizedBox(width: 10),
@@ -37,16 +46,7 @@ Widget farmerTopBar(
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  'FARMER · ${farmerName.toUpperCase()}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppColors.gold,
-                    letterSpacing: 0.5,
-                    fontWeight: FontWeight.w600,
+                    color: AppColors.black,
                   ),
                 ),
               ],
@@ -56,11 +56,12 @@ Widget farmerTopBar(
             const SizedBox(width: 8),
             GestureDetector(
               onTap: onMenu,
-              child: const Icon(Icons.menu, color: Colors.white),
+              child: const Icon(Icons.menu, color: AppColors.black),
             ),
           ],
         ),
-      );
+      ),
+     );
     },
   );
 }
@@ -92,11 +93,11 @@ class _TopBarBell extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white24),
+                  border: Border.all(color: AppColors.border),
                 ),
                 child: const Icon(
                   Icons.notifications_none,
-                  color: Colors.white,
+                  color: AppColors.black,
                   size: 22,
                 ),
               ),
@@ -111,7 +112,7 @@ class _TopBarBell extends StatelessWidget {
                       minHeight: 18,
                     ),
                     decoration: const BoxDecoration(
-                      color: AppColors.maroon,
+                      color: AppColors.sos,
                       shape: BoxShape.circle,
                     ),
                     child: Text(
