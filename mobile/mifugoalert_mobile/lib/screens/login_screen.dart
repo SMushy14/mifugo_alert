@@ -4,7 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_colors.dart';
 import '../widgets/language_toggle.dart';
-import 'auth_helpers.dart';
 import 'farmer_shell.dart';
 import 'vet_shell.dart';
 import 'register_screen.dart';
@@ -17,14 +16,14 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   String _role = 'farmer';
-  final _phone = TextEditingController();
+  final _email = TextEditingController();
   final _password = TextEditingController();
   bool _obscure = true;
   bool _loading = false;
 
   @override
   void dispose() {
-    _phone.dispose();
+    _email.dispose();
     _password.dispose();
     super.dispose();
   }
@@ -35,16 +34,18 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     final t = AppLocalizations.of(context)!;
     final messenger = ScaffoldMessenger.of(context);
-    final phone = _phone.text.trim();
+    final email = _email.text.trim();
     final pass = _password.text;
-    if (phone.isEmpty || pass.isEmpty) {
-      _snack(t.enterPhonePassword);
+
+    if (email.isEmpty || pass.isEmpty) {
+      _snack('Please enter your email and password');
       return;
     }
+
     setState(() => _loading = true);
     try {
       final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: phoneToEmail(phone),
+        email: email,
         password: pass,
       );
       final uid = cred.user!.uid;
@@ -52,6 +53,7 @@ class _LoginScreenState extends State<LoginScreen> {
           .collection('users')
           .doc(uid)
           .get();
+
       if (!mounted) return;
 
       if (!doc.exists) {
@@ -59,6 +61,7 @@ class _LoginScreenState extends State<LoginScreen> {
         messenger.showSnackBar(SnackBar(content: Text(t.noAccountFound)));
         return;
       }
+
       final data = doc.data()!;
       final role = (data['role'] ?? 'farmer').toString();
       final name = (data['fullName'] ?? '').toString();
@@ -98,14 +101,73 @@ class _LoginScreenState extends State<LoginScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            wrong ? t.incorrectPassword : '${t.loginFailed}: ${e.message}',
+            wrong
+                ? 'Incorrect email or password'
+                : 'Sign in failed: ${e.message}',
           ),
         ),
       );
     } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text('${t.loginFailed}: $e')));
+      messenger.showSnackBar(SnackBar(content: Text('Sign in failed: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _forgotPassword() async {
+    final emailController = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Reset password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Enter the email linked to your account. '
+              'We\'ll send you a reset link.',
+              style: TextStyle(fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: emailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                hintText: 'you@example.com',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Send link'),
+          ),
+        ],
+      ),
+    );
+
+    if (ok != true) return;
+    final email = emailController.text.trim();
+    if (email.isEmpty) return;
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Reset link sent. Check your email.')),
+      );
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      final msg = e.code == 'user-not-found'
+          ? 'No account found with that email.'
+          : 'Could not send reset link: ${e.message}';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
   }
 
@@ -127,7 +189,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: LanguageToggle(),
                   ),
                   const SizedBox(height: 2),
-                  // logo in a deep-green gradient badge
                   Container(
                     width: 120,
                     height: 120,
@@ -137,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.deepGreen.withOpacity(0.25),
+                          color: AppColors.textPrimary.withOpacity(0.25),
                           blurRadius: 24,
                           offset: const Offset(0, 10),
                         ),
@@ -170,7 +231,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
+                          color: AppColors.textPrimary.withOpacity(0.05),
                           blurRadius: 24,
                           offset: const Offset(0, 10),
                         ),
@@ -201,9 +262,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                         const SizedBox(height: 18),
-                        Text(
-                          t.phoneNumber,
-                          style: const TextStyle(
+                        const Text(
+                          'Email',
+                          style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
@@ -211,12 +272,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         const SizedBox(height: 8),
                         TextField(
-                          controller: _phone,
-                          keyboardType: TextInputType.phone,
+                          controller: _email,
+                          keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
-                            hintText: t.phoneHint,
+                            hintText: 'you@example.com',
                             prefixIcon: const Icon(
-                              Icons.phone_outlined,
+                              Icons.email_outlined,
                               color: AppColors.textSecondary,
                             ),
                             contentPadding: const EdgeInsets.symmetric(
@@ -341,11 +402,11 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       TextButton(
-                        onPressed: () => _snack(t.forgotPassword),
+                        onPressed: _forgotPassword,
                         child: Text(
                           t.forgotPassword,
                           style: const TextStyle(
-                            color: AppColors.goldDark,
+                            color: AppColors.primary,
                             fontSize: 15,
                           ),
                         ),
@@ -370,10 +431,10 @@ class _LoginScreenState extends State<LoginScreen> {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: sel ? AppColors.goldTint : AppColors.surface,
+            color: sel ? AppColors.primaryTint : AppColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: sel ? AppColors.gold : AppColors.border,
+              color: sel ? AppColors.primary : AppColors.border,
               width: sel ? 1.5 : 1,
             ),
           ),
@@ -381,7 +442,7 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               Icon(
                 icon,
-                color: sel ? AppColors.goldDark : AppColors.textSecondary,
+                color: sel ? AppColors.primary : AppColors.textSecondary,
                 size: 24,
               ),
               const SizedBox(height: 6),
@@ -389,7 +450,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 label,
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: sel ? AppColors.goldDark : AppColors.textSecondary,
+                  color: sel ? AppColors.primary : AppColors.textSecondary,
                 ),
               ),
             ],
