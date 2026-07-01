@@ -28,9 +28,6 @@ class FarmerShell extends StatefulWidget {
 }
 
 class _FarmerShellState extends State<FarmerShell> {
-  static const _green = Color(0xFF1B7A3D);
-  static const _red = Color(0xFFE0322E);
-  static const _gray = Color(0xFF6B7280);
 
   final _scaffoldKey = GlobalKey<ScaffoldState>();
   int _index = 0;
@@ -71,32 +68,46 @@ class _FarmerShellState extends State<FarmerShell> {
         farmerId: widget.farmerId,
         farmerName: widget.farmerName,
         farmerArea: widget.farmerArea,
+        onOpenTab: _go,
+        onOpenMenu: () => _scaffoldKey.currentState?.openEndDrawer(),
       ),
       MyLivestockScreen(
         farmerId: widget.farmerId,
         farmerName: widget.farmerName,
+        onOpenTab: _go,
+        onOpenMenu: () => _scaffoldKey.currentState?.openEndDrawer(),
       ),
       AvailableVetsScreen(
         farmerId: widget.farmerId,
         farmerName: widget.farmerName,
+        onOpenTab: _go,
+        onOpenMenu: () => _scaffoldKey.currentState?.openEndDrawer(),
       ),
       EmergencyAlertScreen(
         farmerId: widget.farmerId,
         farmerName: widget.farmerName,
         farmerArea: widget.farmerArea,
-        onSent: () => _go(0),
+        onSent: () => _go(5),
+        onOpenTab: _go,
+        onOpenMenu: () => _scaffoldKey.currentState?.openEndDrawer(),
       ),
       NotificationsScreen(
         farmerId: widget.farmerId,
         farmerName: widget.farmerName,
+        onOpenTab: _go,
+        onOpenMenu: () => _scaffoldKey.currentState?.openEndDrawer(),
       ),
       ActivityHistoryScreen(
         farmerId: widget.farmerId,
         farmerName: widget.farmerName,
+        onOpenTab: _go,
+        onOpenMenu: () => _scaffoldKey.currentState?.openEndDrawer(),
       ),
       ConsultationsScreen(
         farmerId: widget.farmerId,
         farmerName: widget.farmerName,
+        onOpenTab: _go,
+        onOpenMenu: () => _scaffoldKey.currentState?.openEndDrawer(),
       ),
     ];
 
@@ -115,7 +126,7 @@ class _FarmerShellState extends State<FarmerShell> {
   Widget _bottomNav() {
     Widget tab(IconData icon, String label, int i) {
       final active = _index == i;
-      final color = active ? AppColors.gold : Colors.white70;
+      final color = active ? Colors.white : Colors.white60;
       return Expanded(
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
@@ -151,7 +162,7 @@ class _FarmerShellState extends State<FarmerShell> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: AppColors.deepGreen.withOpacity(0.35),
+              color: AppColors.primary.withOpacity(0.30),
               blurRadius: 18,
               offset: const Offset(0, 8),
             ),
@@ -172,9 +183,8 @@ class _FarmerShellState extends State<FarmerShell> {
                       width: 46,
                       height: 46,
                       decoration: BoxDecoration(
-                        color: AppColors.maroon,
+                        color: AppColors.sos,
                         shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.gold, width: 2),
                       ),
                       child: const Icon(
                         Icons.notifications_active,
@@ -187,7 +197,7 @@ class _FarmerShellState extends State<FarmerShell> {
                       'SOS',
                       style: TextStyle(
                         fontSize: 11,
-                        color: sosActive ? AppColors.gold : Colors.white,
+                        color: sosActive ? Colors.white : Colors.white70,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -195,7 +205,7 @@ class _FarmerShellState extends State<FarmerShell> {
                 ),
               ),
             ),
-            tab(Icons.pets, 'Livestock', 2),
+            tab(Icons.cruelty_free, 'Livestock', 2),
             tab(Icons.notifications_none, 'Alerts', 5),
           ],
         ),
