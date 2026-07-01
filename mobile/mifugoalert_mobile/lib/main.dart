@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'firebase_options.dart';
@@ -9,10 +10,18 @@ import 'l10n/app_localizations.dart';
 import 'locale_controller.dart';
 import 'screens/login_screen.dart';
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  await Supabase.initialize(
+    url: 'https://gwqlxnyrtvrqthbdsuwz.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd3cWx4bnlydHZycXRoYmRzdXd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4MzE1MzYsImV4cCI6MjA5ODQwNzUzNn0.d-nVoO87RUmvezmDMFDYDErJ4_aNUATcNPtaSToVLL0',
+  );
+
   await loadSavedLocale();
+
   runApp(const MifugoAlertApp());
 }
 
