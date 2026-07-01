@@ -37,24 +37,11 @@ class FarmerHomeScreen extends StatelessWidget {
         stream: casesStream,
         builder: (context, caseSnap) {
           final caseDocs = _sortedByDate(caseSnap.data?.docs ?? []);
-          final active = caseDocs
-              .where((d) => _val(d, 'status') != 'resolved')
-              .length;
-          final sick = caseDocs
-              .where((d) => _val(d, 'status') != 'resolved')
-              .fold<int>(0, (s, d) {
-                final c = (d.data() as Map<String, dynamic>)['count'];
-                return s + (c is int ? c : (c is num ? c.toInt() : 1));
-              });
 
           return StreamBuilder<QuerySnapshot>(
             stream: notifsStream,
             builder: (context, notifSnap) {
               final notifDocs = _sortedByDate(notifSnap.data?.docs ?? []);
-              final unread = notifDocs
-                  .where((d) => (d['read'] ?? false) == false)
-                  .length;
-
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -74,19 +61,8 @@ class FarmerHomeScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _heroCard(context),
-                              const SizedBox(height: 16),
-                              _statsRow(active, sick, unread),
                               const SizedBox(height: 20),
-                              const Text(
-                                'Quick actions',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              _quickActions(context),
+                              _availableVetsStrip(context),
                               const SizedBox(height: 20),
                               _sectionHeader(
                                 'Recent cases',
@@ -96,7 +72,7 @@ class FarmerHomeScreen extends StatelessWidget {
                               if (caseDocs.isEmpty)
                                 _emptyHint('No cases yet.')
                               else
-                                ...caseDocs.map(_caseCard),
+                                ...caseDocs.take(4).map(_caseCard),
                               const SizedBox(height: 20),
                               _sectionHeader(
                                 'Latest notifications',
@@ -106,7 +82,7 @@ class FarmerHomeScreen extends StatelessWidget {
                               if (notifDocs.isEmpty)
                                 _emptyHint('No notifications yet.')
                               else
-                                ...notifDocs.map(_notifTile),
+                                ...notifDocs.take(4).map(_notifTile),
                             ],
                           ),
                         ),
@@ -147,7 +123,7 @@ class FarmerHomeScreen extends StatelessWidget {
 
   Widget _emptyHint(String text) => Container(
     width: double.infinity,
-    padding: const EdgeInsets.all(16),
+    padding: const EdgeInsets.all(20),
     decoration: BoxDecoration(
       color: AppColors.surface,
       borderRadius: BorderRadius.circular(14),
@@ -158,7 +134,7 @@ class FarmerHomeScreen extends StatelessWidget {
 
   Widget _heroCard(BuildContext context) => Container(
     width: double.infinity,
-    padding: const EdgeInsets.all(20),
+    padding: const EdgeInsets.all(30),
     decoration: BoxDecoration(
       borderRadius: BorderRadius.circular(20),
       gradient: AppColors.heroGradient,
@@ -171,217 +147,202 @@ class FarmerHomeScreen extends StatelessWidget {
       ],
     ),
     child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        RichText(
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            children: [
+              const TextSpan(
+                text: 'Karibu, ',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              TextSpan(
+                text: farmerName,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
         const Text(
-          'KARIBU',
-          style: TextStyle(
-            color: AppColors.gold,
-            fontSize: 12,
-            letterSpacing: 1,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          farmerName,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 26,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          farmerArea,
-          style: const TextStyle(color: Colors.white, fontSize: 16),
-        ),
-        const SizedBox(height: 16),
-        ElevatedButton.icon(
-          onPressed: () => onOpenTab?.call(4),
-          icon: const Icon(Icons.notifications_active, size: 18),
-          label: const Text(
-            'Emergency Alert',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.maroon,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
-          ),
+          'What can we help you with today?',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white, fontSize: 15),
         ),
       ],
     ),
   );
 
-  Widget _statsRow(int active, int sick, int unread) => Row(
-    children: [
-      Expanded(
-        child: _statCard(
-          '$active',
-          'ACTIVE CASES',
-          AppColors.primaryTint,
-          AppColors.primary,
-        ),
-      ),
-      const SizedBox(width: 10),
-      Expanded(
-        child: _statCard(
-          '$sick',
-          'SICK ANIMALS',
-          AppColors.goldTint,
-          AppColors.goldDark,
-        ),
-      ),
-      const SizedBox(width: 10),
-      Expanded(
-        child: _statCard(
-          '$unread',
-          'UNREAD ALERTS',
-          AppColors.maroonTint,
-          AppColors.maroon,
-        ),
-      ),
-    ],
-  );
+  Widget _availableVetsStrip(BuildContext context) {
+    final vetsStream = FirebaseFirestore.instance
+        .collection('users')
+        .where('role', isEqualTo: 'vet')
+        .snapshots();
 
-  Widget _statCard(String value, String label, Color bg, Color accent) =>
-      Container(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader('Available vets', () => onOpenTab?.call(3)),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 132,
+          child: StreamBuilder<QuerySnapshot>(
+            stream: vetsStream,
+            builder: (context, snap) {
+              if (snap.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final vets = [...(snap.data?.docs ?? [])];
+              vets.sort((a, b) {
+                final av = ((a.data() as Map)['isAvailable'] ?? false) == true
+                    ? 0
+                    : 1;
+                final bv = ((b.data() as Map)['isAvailable'] ?? false) == true
+                    ? 0
+                    : 1;
+                if (av != bv) return av - bv;
+                return ((a.data() as Map)['fullName'] ?? '')
+                    .toString()
+                    .compareTo(
+                      ((b.data() as Map)['fullName'] ?? '').toString(),
+                    );
+              });
+
+              if (vets.isEmpty) {
+                return _emptyHint('No vets registered yet.');
+              }
+
+              return ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: vets.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, i) => _vetMiniCard(
+                  context,
+                  vets[i].data() as Map<String, dynamic>,
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _vetMiniCard(BuildContext context, Map<String, dynamic> v) {
+    final available = (v['isAvailable'] ?? false) == true;
+    final name = (v['fullName'] ?? 'Vet').toString();
+    final spec = (v['specialization'] ?? 'Veterinary Officer').toString();
+    final area = (v['area'] ?? '').toString();
+    final initial = name.isNotEmpty ? name[0].toUpperCase() : 'V';
+
+    return GestureDetector(
+      onTap: () => onOpenTab?.call(3),
+      child: Container(
+        width: 200,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(14),
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryTint,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    initial,
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  width: 9,
+                  height: 9,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: available ? AppColors.primary : AppColors.grey,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
             Text(
-              value,
-              style: TextStyle(
-                fontSize: 26,
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 15,
                 fontWeight: FontWeight.bold,
-                color: accent,
+                color: AppColors.black,
               ),
             ),
             const SizedBox(height: 2),
             Text(
-              label,
+              available ? '$spec · Available' : '$spec · Offline',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 12,
+                color: available ? AppColors.primary : AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
-                color: accent,
               ),
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                const Icon(
+                  Icons.location_on_outlined,
+                  size: 14,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 3),
+                Expanded(
+                  child: Text(
+                    area.isEmpty ? '—' : area,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
-      );
-
-  Widget _quickActions(BuildContext context) {
-    final items = <List<dynamic>>[
-      ['Report sick animal', Icons.report_gmailerrorred],
-      ['Request vet visit', Icons.medical_services_outlined],
-      ['My livestock', Icons.pets],
-      ['Disease info', Icons.menu_book_outlined],
-      ['Consultations', Icons.chat_bubble_outline],
-      ['Activity history', Icons.history],
-    ];
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 2.4,
-      children: List.generate(items.length, (i) {
-        final it = items[i];
-        final tints = [
-          [AppColors.primaryTint, AppColors.primary],
-          [AppColors.goldTint, AppColors.goldDark],
-          [AppColors.maroonTint, AppColors.maroon],
-        ];
-        final pair = tints[i % tints.length];
-        return _actionCard(
-          context,
-          it[0] as String,
-          it[1] as IconData,
-          pair[0],
-          pair[1],
-        );
-      }),
+      ),
     );
   }
-
-  Widget _actionCard(
-    BuildContext context,
-    String label,
-    IconData icon,
-    Color iconBg,
-    Color iconColor,
-  ) => GestureDetector(
-    onTap: () {
-      if (label == 'Report sick animal') {
-        onOpenTab?.call(1);
-      } else if (label == 'Request vet visit') {
-        onOpenTab?.call(3);
-      } else if (label == 'My livestock') {
-        onOpenTab?.call(2);
-      } else if (label == 'Consultations') {
-        onOpenTab?.call(7);
-      } else if (label == 'Activity history') {
-        onOpenTab?.call(6);
-      } else {
-        _todo(context, label);
-      }
-    },
-    child: Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: iconBg,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: iconColor.withOpacity(0.22)),
-        boxShadow: [
-          BoxShadow(
-            color: iconColor.withOpacity(0.10),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: iconColor,
-              ),
-            ),
-          ),
-          Icon(
-            Icons.arrow_forward,
-            size: 16,
-            color: iconColor.withOpacity(0.7),
-          ),
-        ],
-      ),
-    ),
-  );
 
   Widget _sectionHeader(String title, VoidCallback? onViewAll) => Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -391,7 +352,7 @@ class FarmerHomeScreen extends StatelessWidget {
         style: const TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: AppColors.textPrimary,
+          color: AppColors.black,
         ),
       ),
       GestureDetector(
@@ -399,7 +360,7 @@ class FarmerHomeScreen extends StatelessWidget {
         child: const Text(
           'View all',
           style: TextStyle(
-            color: AppColors.goldDark,
+            color: AppColors.black,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -431,7 +392,7 @@ class FarmerHomeScreen extends StatelessWidget {
                 (data['caseCode'] ?? '').toString(),
                 style: const TextStyle(
                   fontSize: 12,
-                  color: AppColors.textSecondary,
+                  color: AppColors.black,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -447,7 +408,7 @@ class FarmerHomeScreen extends StatelessWidget {
             style: const TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: AppColors.black,
             ),
           ),
           const SizedBox(height: 4),
@@ -546,11 +507,5 @@ class FarmerHomeScreen extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  void _todo(BuildContext context, String name) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$name — coming soon')));
   }
 }
