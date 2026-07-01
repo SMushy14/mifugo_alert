@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 import '../theme/app_colors.dart';
 import 'case_widgets.dart';
 import 'farmer_widgets.dart';
@@ -44,6 +47,8 @@ class _ReportSickAnimalScreenState extends State<ReportSickAnimalScreen> {
   final _countController = TextEditingController(text: '1');
   bool _submitting = false;
 
+  File? _photo;
+
   @override
   void dispose() {
     _detailsController.dispose();
@@ -53,6 +58,97 @@ class _ReportSickAnimalScreenState extends State<ReportSickAnimalScreen> {
 
   String _generateCaseCode() =>
       'MA-${1000 + DateTime.now().millisecondsSinceEpoch % 9000}';
+
+  Future<void> _pickPhoto(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 1280,
+        imageQuality: 70,
+      );
+      if (picked != null) {
+        setState(() => _photo = File(picked.path));
+      }
+    } catch (e) {
+      _snack('Could not pick image: $e');
+    }
+  }
+
+  void _showPhotoOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppColors.primary),
+              title: const Text('Take a photo'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickPhoto(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.photo_library,
+                color: AppColors.goldDark,
+              ),
+              title: const Text('Choose from gallery'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickPhoto(ImageSource.gallery);
+              },
+            ),
+            if (_photo != null)
+              ListTile(
+                leading: const Icon(
+                  Icons.delete_outline,
+                  color: AppColors.maroon,
+                ),
+                title: const Text('Remove photo'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  setState(() => _photo = null);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _uploadPhoto(String caseCode) async {
+    if (_photo == null) return null;
+    try {
+      final supabase = Supabase.instance.client;
+      final safe = caseCode.replaceAll(RegExp(r'[^A-Za-z0-9-]'), '');
+      final path = '$safe.jpg';
+
+      await supabase.storage
+          .from('disease-case_photos')
+          .upload(
+            path,
+            _photo!,
+            fileOptions: const FileOptions(
+              contentType: 'image/jpeg',
+              upsert: true,
+            ),
+          );
+
+      return supabase.storage.from('disease-case_photos').getPublicUrl(path);
+    } catch (e) {
+      _snack('Upload error: $e');
+      return null;
+    }
+  }
 
   Future<void> _submit() async {
     if (_symptoms.isEmpty) {
@@ -66,6 +162,8 @@ class _ReportSickAnimalScreenState extends State<ReportSickAnimalScreen> {
           ? 'emergency'
           : 'normal';
 
+      final photoUrl = await _uploadPhoto(caseCode);
+
       final assign = await autoAssignVet(widget.farmerArea);
 
       await FirebaseFirestore.instance.collection('cases').doc(caseCode).set({
@@ -78,6 +176,7 @@ class _ReportSickAnimalScreenState extends State<ReportSickAnimalScreen> {
         'symptoms': _symptoms.toList(),
         'count': _count,
         'details': _detailsController.text.trim(),
+        'photoUrl': photoUrl,
         'source': 'mobile_app',
         'status': assign['assignedVetId'] == null ? 'pending' : 'assigned',
         'assignedVetId': assign['assignedVetId'],
@@ -112,6 +211,7 @@ class _ReportSickAnimalScreenState extends State<ReportSickAnimalScreen> {
         _countController.text = '1';
         _count = 1;
         _animalType = 'Cattle';
+        _photo = null;
       });
     } catch (e) {
       if (mounted) _snack('Could not submit: $e');
@@ -128,18 +228,18 @@ class _ReportSickAnimalScreenState extends State<ReportSickAnimalScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: SafeArea(
-        top: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            farmerTopBar(
-              widget.farmerName,
-              farmerId: widget.farmerId,
-              onBell: () => widget.onOpenTab?.call(5),
-              onMenu: () => widget.onOpenMenu?.call(),
-            ),
-            Expanded(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          farmerTopBar(
+            widget.farmerName,
+            farmerId: widget.farmerId,
+            onBell: () => widget.onOpenTab?.call(5),
+            onMenu: () => widget.onOpenMenu?.call(),
+          ),
+          Expanded(
+            child: SafeArea(
+              top: false,
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -167,8 +267,8 @@ class _ReportSickAnimalScreenState extends State<ReportSickAnimalScreen> {
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -199,6 +299,9 @@ class _ReportSickAnimalScreenState extends State<ReportSickAnimalScreen> {
         _label('Symptoms'),
         _symptomChips(),
         const SizedBox(height: 16),
+        _label('Photo (optional)'),
+        _photoPicker(),
+        const SizedBox(height: 16),
         _label('Additional details'),
         _detailsField(),
         const SizedBox(height: 20),
@@ -218,6 +321,91 @@ class _ReportSickAnimalScreenState extends State<ReportSickAnimalScreen> {
       ),
     ),
   );
+
+  Widget _photoPicker() {
+    if (_photo != null) {
+      return Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Image.file(
+              _photo!,
+              width: double.infinity,
+              height: 180,
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: Row(
+              children: [
+                _photoActionBtn(Icons.edit, _showPhotoOptions),
+                const SizedBox(width: 8),
+                _photoActionBtn(
+                  Icons.close,
+                  () => setState(() => _photo = null),
+                  bg: AppColors.maroon,
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+    return GestureDetector(
+      onTap: _showPhotoOptions,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        decoration: BoxDecoration(
+          color: AppColors.primaryTint.withOpacity(0.4),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: AppColors.primary.withOpacity(0.3),
+          ),
+        ),
+        child: const Column(
+          children: [
+            Icon(
+              Icons.add_a_photo_outlined,
+              color: AppColors.primary,
+              size: 30,
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Add a photo of the animal',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            SizedBox(height: 2),
+            Text(
+              'Camera or gallery',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _photoActionBtn(
+    IconData icon,
+    VoidCallback onTap, {
+    Color bg = Colors.black54,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(color: bg, shape: BoxShape.circle),
+        child: Icon(icon, color: Colors.white, size: 18),
+      ),
+    );
+  }
 
   Widget _dropdown() => Container(
     padding: const EdgeInsets.symmetric(horizontal: 14),
