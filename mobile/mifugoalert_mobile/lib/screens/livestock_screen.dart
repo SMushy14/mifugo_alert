@@ -27,29 +27,28 @@ class MyLivestockScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: SafeArea(
-        top: false,
-        child: StreamBuilder<QuerySnapshot>(
-          stream: stream,
-          builder: (context, snap) {
-            final List<QueryDocumentSnapshot> animals =
-                [...(snap.data?.docs ?? [])]..sort(
-                  (a, b) => (a['name'] ?? '').toString().compareTo(
-                    (b['name'] ?? '').toString(),
-                  ),
-                );
+      body: Column(
+        children: [
+          farmerTopBar(
+            farmerName,
+            farmerId: farmerId,
+            onBell: () => onOpenTab?.call(5),
+            onMenu: () => onOpenMenu?.call(),
+          ),
+          Expanded(
+            child: SafeArea(
+              top: false,
+              child: StreamBuilder<QuerySnapshot>(
+                stream: stream,
+                builder: (context, snap) {
+                  final List<QueryDocumentSnapshot> animals =
+                      [...(snap.data?.docs ?? [])]..sort(
+                        (a, b) => (a['name'] ?? '').toString().compareTo(
+                          (b['name'] ?? '').toString(),
+                        ),
+                      );
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                farmerTopBar(
-                  farmerName,
-                  farmerId: farmerId,
-                  onBell: () => onOpenTab?.call(5),
-                  onMenu: () => onOpenMenu?.call(),
-                ),
-                Expanded(
-                  child: SingleChildScrollView(
+                  return SingleChildScrollView(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -67,12 +66,12 @@ class MyLivestockScreen extends StatelessWidget {
                           ...animals.map(_animalCard),
                       ],
                     ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
